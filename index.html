@@ -600,6 +600,7 @@
 
         <div class="mode-buttons zen-fade">
             <button class="mode-btn active" data-type="clock">Clock</button>
+            <button class="mode-btn" data-type="stopwatch">Stopwatch</button>
             <button class="mode-btn" data-type="pomodoro">Pomodoro</button>
             <button class="mode-btn" data-type="short-break">Short Break</button>
             <button class="mode-btn" data-type="long-break">Long Break</button>
@@ -609,8 +610,8 @@
             autocomplete="off" spellcheck="false" />
 
         <div class="huge-display timer-mode-ui" id="timerDisplay">25:00</div>
-        <div class="huge-display clock-mode-ui" id="giantClockDisplay">00:00<span>
-                style="font-size: 0.7em; opacity: 0.8; font-weight: 400;">:00</span><span> 
+        <div class="huge-display clock-mode-ui" id="giantClockDisplay">00:00<span
+                style="font-size: 0.7em; opacity: 0.8; font-weight: 400;">:00</span><span 
                 style="font-size: 0.35em; opacity: 0.6; font-weight: 300; margin-left: 12px;">AM</span></div>
 
         <div class="controls">
@@ -807,10 +808,30 @@
         const timerDisplay = document.getElementById("timerDisplay");
         const startBtn = document.getElementById("startBtn");
 
+        // Request browser notification permission utility
+        function requestNotificationPermission() {
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+        }
+
+        function triggerNotification(title, message) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: message,
+                    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>"
+                });
+            }
+        }
+
         function updateTimerDisplay() {
-            const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+            const h = Math.floor(timeLeft / 3600);
+            const m = String(Math.floor((timeLeft % 3600) / 60)).padStart(2, '0');
             const s = String(timeLeft % 60).padStart(2, '0');
-            const timeStr = `${m}:${s}`;
+            
+            let timeStr = `${m}:${s}`;
+            if (h > 0) timeStr = `${h}:${m}:${s}`; // Show hours if stopwatch runs very long
+
             timerDisplay.innerHTML = timeStr;
             if (currentModeType !== 'clock') document.title = isRunning ? `(${timeStr}) Focus` : "FocusFlow";
         }
@@ -818,7 +839,7 @@
         function switchMode(modeType) {
             clearInterval(interval);
             isRunning = false;
-            startBtn.innerText = "Start Focus";
+            startBtn.innerText = modeType === 'stopwatch' ? "Start Stopwatch" : "Start Focus";
             document.body.classList.remove('focus-active');
             if (isNoiseEnabled) stopBrownNoise();
 
@@ -832,7 +853,11 @@
                 updateRealTimeClock();
             } else {
                 document.body.classList.remove('mode-clock');
-                timeLeft = durations[currentModeType] * 60;
+                if (modeType === 'stopwatch') {
+                    timeLeft = 0; // Stopwatch always starts from 0
+                } else {
+                    timeLeft = durations[currentModeType] * 60;
+                }
                 updateTimerDisplay();
             }
         }
@@ -840,12 +865,23 @@
         document.querySelectorAll(".mode-btn").forEach(btn => btn.addEventListener("click", () => switchMode(btn.dataset.type)));
 
         function startTimer() {
+            // Ask for notification permission on first interaction
+            requestNotificationPermission();
+
             if (isRunning) {
+                // We are pausing
                 clearInterval(interval); isRunning = false;
-                startBtn.innerText = "Resume Focus";
+                startBtn.innerText = currentModeType === 'stopwatch' ? "Resume Stopwatch" : "Resume Focus";
                 document.body.classList.remove('focus-active');
                 if (isNoiseEnabled) stopBrownNoise();
                 saveData();
+
+                // Trigger Notification when pausing
+                const m = Math.floor(timeLeft / 60);
+                const s = timeLeft % 60;
+                let msg = `You have paused at ${m} minute(s) and ${s} second(s).`;
+                triggerNotification(currentModeType === 'stopwatch' ? "Stopwatch Paused" : "Timer Paused", msg);
+
                 return updateTimerDisplay();
             }
 
@@ -856,36 +892,58 @@
             updateTimerDisplay();
 
             interval = setInterval(() => {
-                if (timeLeft > 0) {
-                    timeLeft--;
-                    if (currentModeType === 'pomodoro') dailyStats.focusSeconds++;
+                if (currentModeType === 'stopwatch') {
+                    timeLeft++;
+                    dailyStats.focusSeconds++;
                     updateTimerDisplay();
                 } else {
-                    clearInterval(interval); isRunning = false;
-                    startBtn.innerText = "Start Focus";
-                    document.body.classList.remove('focus-active');
-                    if (isNoiseEnabled) stopBrownNoise();
-                    new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg").play().catch(() => { });
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        if (currentModeType === 'pomodoro') dailyStats.focusSeconds++;
+                        updateTimerDisplay();
+                    } else {
+                        // Timer logic finished
+                        clearInterval(interval); isRunning = false;
+                        startBtn.innerText = "Start Focus";
+                        document.body.classList.remove('focus-active');
+                        if (isNoiseEnabled) stopBrownNoise();
+                        new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg").play().catch(() => { });
 
-                    if (currentModeType === 'pomodoro') {
-                        sessionsCompleted++;
-                        dailyStats.completedPomodoros++;
-                        saveData();
-                        updateTracker();
-                        if (sessionsCompleted % 4 === 0) switchMode('long-break');
-                        else switchMode('short-break');
-                    } else { switchMode('pomodoro'); }
-                    setTimeout(startTimer, 1500);
+                        // Notify user timer finished
+                        let focusType = currentModeType === 'pomodoro' ? 'Pomodoro Session' : 'Break';
+                        triggerNotification("FocusFlow", `Your ${focusType} is complete!`);
+
+                        if (currentModeType === 'pomodoro') {
+                            sessionsCompleted++;
+                            dailyStats.completedPomodoros++;
+                            saveData();
+                            updateTracker();
+                            if (sessionsCompleted % 4 === 0) switchMode('long-break');
+                            else switchMode('short-break');
+                        } else { switchMode('pomodoro'); }
+                        setTimeout(startTimer, 1500);
+                    }
                 }
             }, 1000);
         }
 
         startBtn.addEventListener("click", startTimer);
+        
         document.getElementById("resetBtn").addEventListener("click", () => {
-            clearInterval(interval); isRunning = false; startBtn.innerText = "Start Focus";
+            clearInterval(interval); isRunning = false; 
+            startBtn.innerText = currentModeType === 'stopwatch' ? "Start Stopwatch" : "Start Focus";
             document.body.classList.remove('focus-active');
             if (isNoiseEnabled) stopBrownNoise();
-            timeLeft = durations[currentModeType] * 60; updateTimerDisplay();
+            
+            // Send final notification if resetting mid-stopwatch
+            if (currentModeType === 'stopwatch' && timeLeft > 0) {
+                const m = Math.floor(timeLeft / 60);
+                const s = timeLeft % 60;
+                triggerNotification("Stopwatch Reset", `Final recorded time was ${m}m ${s}s.`);
+            }
+
+            timeLeft = currentModeType === 'stopwatch' ? 0 : durations[currentModeType] * 60; 
+            updateTimerDisplay();
         });
 
          
@@ -939,7 +997,9 @@
             durations['short-break'] = parseInt(document.getElementById("setTimeShort").value) || 5;
             durations['long-break'] = parseInt(document.getElementById("setTimeLong").value) || 15;
             saveData();
-            if (!isRunning && currentModeType !== 'clock') { timeLeft = durations[currentModeType] * 60; updateTimerDisplay(); }
+            if (!isRunning && currentModeType !== 'clock' && currentModeType !== 'stopwatch') { 
+                timeLeft = durations[currentModeType] * 60; updateTimerDisplay(); 
+            }
             document.getElementById("settingsModal").classList.remove("show");
         });
 
