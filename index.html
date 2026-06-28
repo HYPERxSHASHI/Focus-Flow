@@ -178,7 +178,7 @@
             font-family: inherit;
             text-align: center;
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
             opacity: 0.6;
             transition: 0.3s ease;
         }
@@ -189,6 +189,12 @@
 
         .focus-input:focus {
             opacity: 1;
+        }
+
+        .tag-input {
+            font-size: 0.9rem;
+            opacity: 0.4;
+            margin-bottom: 25px;
         }
 
         .huge-display {
@@ -246,6 +252,7 @@
             justify-content: center;
             align-items: center;
             flex-shrink: 0;
+            position: relative;
         }
 
         .icon-btn svg {
@@ -523,6 +530,38 @@
             margin-top: 5px;
         }
 
+        .tag-list-box {
+            max-height: 120px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 15px;
+        }
+        
+        .tag-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .sound-indicator {
+            position: absolute;
+            top: -10px;
+            font-size: 0.6rem;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .icon-btn:hover .sound-indicator {
+            opacity: 1;
+        }
+
         @media(max-width:768px) {
             .glass-container {
                 padding: 40px 20px;
@@ -608,6 +647,9 @@
 
         <input type="text" class="focus-input zen-fade timer-mode-ui" id="focusInput" placeholder="What is your focus?"
             autocomplete="off" spellcheck="false" />
+            
+        <input type="text" class="focus-input tag-input zen-fade timer-mode-ui" id="sessionTag" placeholder="Tag (e.g. Exam Prep, Hardware, Scripting)"
+            autocomplete="off" spellcheck="false" />
 
         <div class="huge-display timer-mode-ui" id="timerDisplay">25:00</div>
         <div class="huge-display clock-mode-ui" id="giantClockDisplay">00:00<span
@@ -631,12 +673,11 @@
                 </svg>
             </button>
 
-            <button class="icon-btn zen-fade timer-mode-ui" id="noiseBtn" title="Brown Noise Focus">
+            <button class="icon-btn zen-fade timer-mode-ui" id="noiseBtn" title="Soundscapes">
+                <span class="sound-indicator" id="soundIndicator">Off</span>
                 <svg viewBox="0 0 24 24">
                     <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
-                    <path
-                        d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z">
-                    </path>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
                 </svg>
             </button>
 
@@ -659,11 +700,14 @@
 
             <button class="icon-btn zen-fade" id="fullscreenBtn" title="Fullscreen">
                 <svg viewBox="0 0 24 24">
-                    <path
-                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                    </path>
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                 </svg>
             </button>
+        </div>
+        
+        <div class="timer-mode-ui zen-fade" style="width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 25px; opacity: 0.5; font-size: 0.9rem;">
+            <input type="checkbox" id="strictMode" style="margin-right: 8px; accent-color: #3b82f6;"> 
+            <label for="strictMode" style="cursor: pointer;">Strict Mode (No Pausing)</label>
         </div>
 
         <div class="tracker zen-fade timer-mode-ui" id="tracker">
@@ -676,10 +720,14 @@
 
     <div class="modal" id="settingsModal">
         <div class="modal-content">
-            <h3>Timer Durations</h3>
+            <h3>Settings</h3>
             <div class="setting-row"><label>Pomodoro</label><input type="number" id="setTimePomo" min="1"></div>
             <div class="setting-row"><label>Short Break</label><input type="number" id="setTimeShort" min="1"></div>
             <div class="setting-row"><label>Long Break</label><input type="number" id="setTimeLong" min="1"></div>
+            <div class="setting-row" style="opacity: 0.4; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <label style="font-size: 0.85rem;">App Blocking</label>
+                <span style="font-size: 0.75rem;">(Native Android Only)</span>
+            </div>
             <button class="main-btn close-modal-btn" id="saveSettingsBtn">Save & Apply</button>
         </div>
     </div>
@@ -694,7 +742,9 @@
                 <div class="stat-value" id="statPomodoros">0</div>
                 <div class="stat-label">Pomodoros Completed</div>
             </div>
-            <button class="main-btn close-modal-btn" id="closeStatsBtn">Awesome!</button>
+            <div class="tag-list-box" id="tagListContainer">
+                </div>
+            <button class="main-btn close-modal-btn" id="closeStatsBtn" style="margin-top:20px;">Awesome!</button>
         </div>
     </div>
 
@@ -702,14 +752,17 @@
        
         let durations = { 'pomodoro': 25, 'short-break': 5, 'long-break': 15 };
         let tasks = [];
-        let dailyStats = { date: new Date().toDateString(), focusSeconds: 0, completedPomodoros: 0 };
+        let dailyStats = { date: new Date().toDateString(), focusSeconds: 0, completedPomodoros: 0, tags: {} };
 
         function loadData() {
             if (localStorage.getItem('ff_durations')) durations = JSON.parse(localStorage.getItem('ff_durations'));
             if (localStorage.getItem('ff_tasks')) tasks = JSON.parse(localStorage.getItem('ff_tasks'));
             if (localStorage.getItem('ff_stats')) {
                 let savedStats = JSON.parse(localStorage.getItem('ff_stats'));
-                if (savedStats.date === new Date().toDateString()) dailyStats = savedStats;
+                if (savedStats.date === new Date().toDateString()) {
+                    dailyStats = savedStats;
+                    if(!dailyStats.tags) dailyStats.tags = {};
+                }
             }
         }
         function saveData() {
@@ -730,6 +783,7 @@
         let interval = null;
         let isRunning = false;
         let sessionsCompleted = 0;
+        let targetTime = 0; 
 
        
         function updateRealTimeClock() {
@@ -751,56 +805,77 @@
 
      
         let audioCtx;
-        let noiseSource;
-        let isNoiseEnabled = false;
+        let activeAudioNodes = [];
+        let soundState = 0; // 0: Off, 1: Brown, 2: Binaural, 3: Drone
+        const soundLabels = ["Off", "Brown Noise", "Binaural (10Hz)", "Deep Drone"];
 
-        function startBrownNoise() {
+        function startAudioscape() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
+            stopAudioscape(); // clear existing
 
-            const bufferSize = audioCtx.sampleRate * 10;  
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            let lastOut = 0;
+            if (soundState === 1) {
+                // Brown Noise
+                const bufferSize = audioCtx.sampleRate * 10;  
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = data[i];
+                    data[i] *= 3.5;
+                }
+                let noiseSource = audioCtx.createBufferSource();
+                noiseSource.buffer = buffer; noiseSource.loop = true;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass'; filter.frequency.value = 400;
+                noiseSource.connect(filter); filter.connect(audioCtx.destination);
+                noiseSource.start();
+                activeAudioNodes.push(noiseSource);
 
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                data[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = data[i];
-                data[i] *= 3.5;
+            } else if (soundState === 2) {
+                // Binaural Beats (200Hz L, 210Hz R) -> 10Hz Alpha
+                let oscL = audioCtx.createOscillator(); oscL.frequency.value = 200;
+                let oscR = audioCtx.createOscillator(); oscR.frequency.value = 210;
+                let panL = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createPanner();
+                let panR = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createPanner();
+                if(panL.pan) { panL.pan.value = -1; panR.pan.value = 1; }
+                oscL.connect(panL); panL.connect(audioCtx.destination);
+                oscR.connect(panR); panR.connect(audioCtx.destination);
+                oscL.start(); oscR.start();
+                activeAudioNodes.push(oscL, oscR);
+
+            } else if (soundState === 3) {
+                // Deep Drone
+                let osc = audioCtx.createOscillator();
+                osc.type = 'sawtooth'; osc.frequency.value = 60;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass'; filter.frequency.value = 200;
+                osc.connect(filter); filter.connect(audioCtx.destination);
+                osc.start();
+                activeAudioNodes.push(osc);
             }
-
-            noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = buffer;
-            noiseSource.loop = true;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 400;
-
-            noiseSource.connect(filter);
-            filter.connect(audioCtx.destination);
-
-            noiseSource.start();
         }
 
-        function stopBrownNoise() {
-            if (noiseSource) {
-                noiseSource.stop();
-                noiseSource.disconnect();
-                noiseSource = null;
-            }
+        function stopAudioscape() {
+            activeAudioNodes.forEach(node => {
+                try { node.stop(); node.disconnect(); } catch(e){}
+            });
+            activeAudioNodes = [];
         }
 
         document.getElementById("noiseBtn").addEventListener("click", () => {
-            isNoiseEnabled = !isNoiseEnabled;
+            soundState = (soundState + 1) % 4;
+            document.getElementById("soundIndicator").innerText = soundLabels[soundState];
+            
             const btn = document.getElementById("noiseBtn");
-            if (isNoiseEnabled) {
+            if (soundState > 0) {
                 btn.classList.add("active-noise");
-                if (isRunning) startBrownNoise();
+                if (isRunning) startAudioscape();
             } else {
                 btn.classList.remove("active-noise");
-                stopBrownNoise();
+                stopAudioscape();
             }
         });
 
@@ -808,7 +883,6 @@
         const timerDisplay = document.getElementById("timerDisplay");
         const startBtn = document.getElementById("startBtn");
 
-        // Request browser notification permission utility
         function requestNotificationPermission() {
             if ("Notification" in window && Notification.permission === "default") {
                 Notification.requestPermission();
@@ -830,7 +904,7 @@
             const s = String(timeLeft % 60).padStart(2, '0');
             
             let timeStr = `${m}:${s}`;
-            if (h > 0) timeStr = `${h}:${m}:${s}`; // Show hours if stopwatch runs very long
+            if (h > 0) timeStr = `${h}:${m}:${s}`; 
 
             timerDisplay.innerHTML = timeStr;
             if (currentModeType !== 'clock') document.title = isRunning ? `(${timeStr}) Focus` : "FocusFlow";
@@ -841,7 +915,7 @@
             isRunning = false;
             startBtn.innerText = modeType === 'stopwatch' ? "Start Stopwatch" : "Start Focus";
             document.body.classList.remove('focus-active');
-            if (isNoiseEnabled) stopBrownNoise();
+            if (soundState > 0) stopAudioscape();
 
             document.querySelectorAll(".mode-btn").forEach(btn => {
                 btn.classList.toggle("active", btn.dataset.type === modeType);
@@ -854,7 +928,7 @@
             } else {
                 document.body.classList.remove('mode-clock');
                 if (modeType === 'stopwatch') {
-                    timeLeft = 0; // Stopwatch always starts from 0
+                    timeLeft = 0; 
                 } else {
                     timeLeft = durations[currentModeType] * 60;
                 }
@@ -865,18 +939,22 @@
         document.querySelectorAll(".mode-btn").forEach(btn => btn.addEventListener("click", () => switchMode(btn.dataset.type)));
 
         function startTimer() {
-            // Ask for notification permission on first interaction
             requestNotificationPermission();
 
             if (isRunning) {
-                // We are pausing
-                clearInterval(interval); isRunning = false;
+                // Strict mode check for pausing
+                if (document.getElementById("strictMode").checked) {
+                    triggerNotification("Strict Mode Active", "No pauses allowed. Stay disciplined!");
+                    return; 
+                }
+
+                clearInterval(interval); 
+                isRunning = false;
                 startBtn.innerText = currentModeType === 'stopwatch' ? "Resume Stopwatch" : "Resume Focus";
                 document.body.classList.remove('focus-active');
-                if (isNoiseEnabled) stopBrownNoise();
+                if (soundState > 0) stopAudioscape();
                 saveData();
 
-                // Trigger Notification when pausing
                 const m = Math.floor(timeLeft / 60);
                 const s = timeLeft % 60;
                 let msg = `You have paused at ${m} minute(s) and ${s} second(s).`;
@@ -888,28 +966,51 @@
             isRunning = true;
             startBtn.innerText = "Pause";
             document.body.classList.add('focus-active');
-            if (isNoiseEnabled) startBrownNoise();
+            if (soundState > 0) startAudioscape();
+
+            const now = Date.now();
+            if (currentModeType === 'stopwatch') {
+                targetTime = now - (timeLeft * 1000);
+            } else {
+                targetTime = now + (timeLeft * 1000);
+            }
+
             updateTimerDisplay();
 
             interval = setInterval(() => {
+                const currentTime = Date.now();
+                let currentTag = document.getElementById('sessionTag').value.trim() || 'Untagged';
+
                 if (currentModeType === 'stopwatch') {
-                    timeLeft++;
-                    dailyStats.focusSeconds++;
+                    let previousTimeLeft = timeLeft;
+                    timeLeft = Math.floor((currentTime - targetTime) / 1000);
+                    
+                    if (timeLeft > previousTimeLeft) {
+                        let diff = timeLeft - previousTimeLeft;
+                        dailyStats.focusSeconds += diff;
+                        dailyStats.tags[currentTag] = (dailyStats.tags[currentTag] || 0) + diff;
+                    }
                     updateTimerDisplay();
+                    
                 } else {
-                    if (timeLeft > 0) {
-                        timeLeft--;
-                        if (currentModeType === 'pomodoro') dailyStats.focusSeconds++;
-                        updateTimerDisplay();
-                    } else {
-                        // Timer logic finished
-                        clearInterval(interval); isRunning = false;
+                    let previousTimeLeft = timeLeft;
+                    timeLeft = Math.max(0, Math.ceil((targetTime - currentTime) / 1000));
+                    
+                    if (currentModeType === 'pomodoro' && previousTimeLeft > timeLeft) {
+                        let diff = previousTimeLeft - timeLeft;
+                        dailyStats.focusSeconds += diff;
+                        dailyStats.tags[currentTag] = (dailyStats.tags[currentTag] || 0) + diff;
+                    }
+                    updateTimerDisplay();
+
+                    if (timeLeft <= 0) {
+                        clearInterval(interval); 
+                        isRunning = false;
                         startBtn.innerText = "Start Focus";
                         document.body.classList.remove('focus-active');
-                        if (isNoiseEnabled) stopBrownNoise();
+                        if (soundState > 0) stopAudioscape();
                         new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg").play().catch(() => { });
 
-                        // Notify user timer finished
                         let focusType = currentModeType === 'pomodoro' ? 'Pomodoro Session' : 'Break';
                         triggerNotification("FocusFlow", `Your ${focusType} is complete!`);
 
@@ -920,11 +1021,13 @@
                             updateTracker();
                             if (sessionsCompleted % 4 === 0) switchMode('long-break');
                             else switchMode('short-break');
-                        } else { switchMode('pomodoro'); }
+                        } else { 
+                            switchMode('pomodoro'); 
+                        }
                         setTimeout(startTimer, 1500);
                     }
                 }
-            }, 1000);
+            }, 200); 
         }
 
         startBtn.addEventListener("click", startTimer);
@@ -933,9 +1036,8 @@
             clearInterval(interval); isRunning = false; 
             startBtn.innerText = currentModeType === 'stopwatch' ? "Start Stopwatch" : "Start Focus";
             document.body.classList.remove('focus-active');
-            if (isNoiseEnabled) stopBrownNoise();
+            if (soundState > 0) stopAudioscape();
             
-            // Send final notification if resetting mid-stopwatch
             if (currentModeType === 'stopwatch' && timeLeft > 0) {
                 const m = Math.floor(timeLeft / 60);
                 const s = timeLeft % 60;
@@ -1006,6 +1108,19 @@
         document.getElementById("statsBtn").addEventListener("click", () => {
             document.getElementById("statHours").innerText = (dailyStats.focusSeconds / 3600).toFixed(1) + "h";
             document.getElementById("statPomodoros").innerText = dailyStats.completedPomodoros;
+            
+            // Render Tag breakdown
+            const tagContainer = document.getElementById("tagListContainer");
+            tagContainer.innerHTML = `<div style="margin-bottom:8px; font-weight:600; font-size:1rem;">Session Tags</div>`;
+            if (Object.keys(dailyStats.tags || {}).length === 0) {
+                tagContainer.innerHTML += `<div class="tag-row">No tags recorded today.</div>`;
+            } else {
+                for (const [tag, seconds] of Object.entries(dailyStats.tags)) {
+                    let m = Math.floor(seconds / 60);
+                    tagContainer.innerHTML += `<div class="tag-row"><span>${tag}</span><span>${m}m</span></div>`;
+                }
+            }
+
             document.getElementById("statsModal").classList.add("show");
         });
         document.getElementById("closeStatsBtn").addEventListener("click", () => document.getElementById("statsModal").classList.remove("show"));
@@ -1021,6 +1136,22 @@
             if (e.code === 'Space') { e.preventDefault(); startTimer(); }
             else if (e.code === 'KeyR') document.getElementById("resetBtn").click();
         });
+
+        // PWA Service Worker Injection for Offline Support
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'focusflow-v1';
+                self.addEventListener('install', (e) => {
+                    e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll([location.href])));
+                });
+                self.addEventListener('fetch', (e) => {
+                    e.respondWith(caches.match(e.request).then((res) => res || fetch(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob))
+                .catch(err => console.log('PWA SW Registration failed:', err));
+        }
     </script>
 </body>
 
